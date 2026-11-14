@@ -89,6 +89,22 @@ export default function LoginPage() {
               {loading ? <Spinner className="animate-spin" style={{ width: 16, height: 16 } as React.CSSProperties} /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
             </button>
           </form>
+          {/* Fresher / CEO Portal links */}
+          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+              Are you a job seeker?{' '}
+              <a href="/fresher/login" style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                Sign in as Candidate →
+              </a>
+            </p>
+          </div>
+          {/* Demo credentials */}
+          <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '0.75rem', border: '1px solid #bbf7d0' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a', marginBottom: '0.3rem' }}>🧪 Demo Recruiter / CEO Credentials</p>
+            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>sarah@trustume.com / Recruiter@123</p>
+            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>michael@trustume.com / Recruiter@123</p>
+            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>ceo@trustume.com / CEO@123456</p>
+          </div>
         </div>
       </div>
     </div>

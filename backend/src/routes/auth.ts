@@ -41,7 +41,7 @@ router.post('/login', validate(LoginSchema), async (req: Request, res: Response)
       return res.status(400).json({ error: 'Email and password are required' }) as unknown as void;
     }
     const result = await query(
-      `SELECT recruiter_id, full_name, email, password_hash FROM recruiters WHERE email = $1`,
+      `SELECT recruiter_id, full_name, email, password_hash, role FROM recruiters WHERE email = $1`,
       [email]
     );
     const recruiter = result.rows[0];
@@ -55,13 +55,13 @@ router.post('/login', validate(LoginSchema), async (req: Request, res: Response)
       return res.status(401).json({ error: 'Invalid email or password' }) as unknown as void;
     }
     const token = jwt.sign(
-      { recruiter_id: recruiter.recruiter_id, email: recruiter.email },
+      { recruiter_id: recruiter.recruiter_id, email: recruiter.email, role: recruiter.role || 'recruiter' },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'] }
     );
     console.log('Login successful for recruiter_id:', recruiter.recruiter_id);
     res.json({
-      recruiter: { recruiter_id: recruiter.recruiter_id, full_name: recruiter.full_name, email: recruiter.email },
+      recruiter: { recruiter_id: recruiter.recruiter_id, full_name: recruiter.full_name, email: recruiter.email, role: recruiter.role || 'recruiter' },
       token,
     });
   } catch (err) {

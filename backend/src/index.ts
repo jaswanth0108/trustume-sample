@@ -13,6 +13,7 @@ import messageRoutes    from './routes/messages';
 import aiRoutes         from './routes/ai';
 import dashboardRoutes  from './routes/dashboard';
 import draftsRoutes     from './routes/drafts';
+import fresherRoutes    from './routes/fresher';
 import { errorHandler } from './middleware/errorHandler';
 import { pool }         from './config/database';
 
@@ -47,6 +48,7 @@ app.use('/api/messages',     messageRoutes);
 app.use('/api/ai',           aiRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/drafts',       draftsRoutes);
+app.use('/api/fresher',      fresherRoutes);
 
 // ── 404 ──────────────────────────────────────────────────────
 app.use((_req, res) => {

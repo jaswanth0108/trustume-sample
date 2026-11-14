@@ -28,16 +28,24 @@ export default function Header() {
   )?.[1] ?? 'Trustume';
 
   const handleLogout = () => { logout(); navigate('/login'); };
+  const isCEO = (recruiter as unknown as { role?: string })?.role === 'ceo';
 
   return (
     <header style={{ height: 56, background: '#fff', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1.5rem', flexShrink: 0 }}>
-      <h1 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>{title}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h1 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>{title}</h1>
+        {isCEO && (
+          <span style={{ fontSize: 11, fontWeight: 700, background: '#fef3c7', color: '#d97706', padding: '2px 8px', borderRadius: 20, border: '1px solid #fde68a', letterSpacing: '0.03em' }}>
+            👑 CEO VIEW — All Recruiters
+          </span>
+        )}
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', borderRadius: 8 }}>
           <Bell size={17} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#dbeafe', color: '#1e40af', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: isCEO ? '#fef3c7' : '#dbeafe', color: isCEO ? '#d97706' : '#1e40af', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
             {getInitials(recruiter?.full_name || 'R')}
           </div>
           <span style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}>{recruiter?.full_name}</span>

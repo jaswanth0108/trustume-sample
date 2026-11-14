@@ -12,9 +12,17 @@ import TasksPage from './pages/TasksPage';
 import AIAssistantPage from './pages/AIAssistantPage';
 import SettingsPage from './pages/SettingsPage';
 
+// Fresher Portal
+import { FresherAuthProvider } from './context/FresherAuthContext';
+import FresherLayout from './components/fresher/FresherLayout';
+import FresherLoginPage from './pages/fresher/FresherLoginPage';
+import FresherDashboardPage from './pages/fresher/FresherDashboardPage';
+import FresherConversationPage from './pages/fresher/FresherConversationPage';
+
 export default function App() {
   return (
     <Routes>
+      {/* ── Recruiter / CEO Portal ───────────────────── */}
       <Route path="/login" element={<LoginPage />} />
       <Route element={<AppLayout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
@@ -28,6 +36,24 @@ export default function App() {
         <Route path="/ai-assistant"        element={<AIAssistantPage />} />
         <Route path="/settings"            element={<SettingsPage />} />
       </Route>
+
+      {/* ── Fresher / Candidate Portal ───────────────── */}
+      <Route path="/fresher/login" element={
+        <FresherAuthProvider>
+          <FresherLoginPage />
+        </FresherAuthProvider>
+      } />
+      <Route path="/fresher" element={
+        <FresherAuthProvider>
+          <FresherLayout />
+        </FresherAuthProvider>
+      }>
+        <Route index element={<Navigate to="/fresher/dashboard" replace />} />
+        <Route path="dashboard"                    element={<FresherDashboardPage />} />
+        <Route path="conversation/:applicationId"  element={<FresherConversationPage />} />
+      </Route>
+
+      {/* ── Catch-all ────────────────────────────────── */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
