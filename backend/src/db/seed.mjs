@@ -7,13 +7,14 @@ import bcrypt from 'bcryptjs';
 
 const { Client } = pkg;
 
-// Uses DATABASE_URL env var if set (recommended), otherwise falls back to local defaults
-// Set DATABASE_URL in your .env file:  DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
-const connectionConfig = process.env.DATABASE_URL
-  ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
-  : { host: 'localhost', port: 5432, database: 'trustume', user: 'postgres', password: 'postgres' };
-
-const client = new Client(connectionConfig);
+const client = new Client({
+  host: 'ep-soft-shadow-aojneigp-pooler.c-2.ap-southeast-1.aws.neon.tech',
+  port: 5432,
+  database: 'neondb',
+  user: 'neondb_owner',
+  password: 'npg_svlh8Nft2qBe',
+  ssl: { rejectUnauthorized: false },
+});
 
 async function run() {
   await client.connect();

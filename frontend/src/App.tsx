@@ -11,6 +11,7 @@ import DraftsPage from './pages/DraftsPage';
 import TasksPage from './pages/TasksPage';
 import AIAssistantPage from './pages/AIAssistantPage';
 import SettingsPage from './pages/SettingsPage';
+import ApplicantsPage from './pages/ApplicantsPage';
 
 // Fresher Portal
 import { FresherAuthProvider } from './context/FresherAuthContext';
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/tasks"               element={<TasksPage />} />
         <Route path="/ai-assistant"        element={<AIAssistantPage />} />
         <Route path="/settings"            element={<SettingsPage />} />
+        <Route path="/applicants"          element={<ApplicantsPage />} />
       </Route>
 
       {/* ── Fresher / Candidate Portal ───────────────── */}

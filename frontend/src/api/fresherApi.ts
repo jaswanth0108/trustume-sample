@@ -9,8 +9,15 @@ export const fresherApi = {
   login:       (email: string, password: string) =>
     axios.post(`${BASE}/fresher/login`, { email, password }),
 
-  getProfile:  () =>
-    axios.get(`${BASE}/fresher/profile`, { headers: h() }),
+  // Profile management
+  getProfile: () => axios.get(`${BASE}/profile/candidate`, { headers: h() }),
+  updateProfile: (data: object) => axios.put(`${BASE}/profile/candidate`, data, { headers: h() }),
+  addSkill: (skill_name: string, proficiency: string) => axios.post(`${BASE}/profile/skills`, { skill_name, proficiency }, { headers: h() }),
+  deleteSkill: (skillId: string) => axios.delete(`${BASE}/profile/skills/${skillId}`, { headers: h() }),
+  addProject: (data: object) => axios.post(`${BASE}/profile/projects`, data, { headers: h() }),
+  deleteProject: (projectId: string) => axios.delete(`${BASE}/profile/projects/${projectId}`, { headers: h() }),
+  // Apply with full application
+  submitApplication: (jobId: string, data: object) => axios.post(`${BASE}/profile/apply/${jobId}`, data, { headers: h() }),
 
   getApplications: () =>
     axios.get(`${BASE}/fresher/applications`, { headers: h() }),

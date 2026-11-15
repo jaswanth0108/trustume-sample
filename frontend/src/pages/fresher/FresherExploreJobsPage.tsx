@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fresherApi } from '../../api/fresherApi';
-import toast from 'react-hot-toast';
+import FresherApplyWizard from './FresherApplyWizard';
 
 interface Job {
   job_role_id: string;
@@ -29,28 +29,12 @@ export default function FresherExploreJobsPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [applyingJob, setApplyingJob] = useState<Job | null>(null);
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['fresher-jobs'],
     queryFn: () => fresherApi.getJobs().then(r => r.data.jobs as Job[]),
-  });
-
-  const applyMutation = useMutation({
-    mutationFn: (jobId: string) => fresherApi.applyToJob(jobId),
-    onSuccess: (_, jobId) => {
-      setAppliedIds(prev => new Set([...prev, jobId]));
-      qc.invalidateQueries({ queryKey: ['fresher-applications'] });
-      toast.success('Application submitted successfully! 🎉');
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.error || 'Failed to apply';
-      if (err?.response?.status === 409) {
-        toast('You have already applied for this job.', { icon: 'ℹ️' });
-      } else {
-        toast.error(msg);
-      }
-    },
   });
 
   const jobs = data || [];
@@ -195,13 +179,10 @@ export default function FresherExploreJobsPage() {
                   </span>
                 ) : (
                   <button
-                    onClick={() => applyMutation.mutate(job.job_role_id)}
-                    disabled={applyMutation.isPending}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition whitespace-nowrap"
+                    onClick={() => setApplyingJob(job)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition whitespace-nowrap"
                   >
-                    {applyMutation.isPending && applyMutation.variables === job.job_role_id
-                      ? 'Applying...'
-                      : 'Apply Now'}
+                    Apply Now
                   </button>
                 )}
               </div>
@@ -279,11 +260,9 @@ export default function FresherExploreJobsPage() {
                 ) : (
                   <button
                     onClick={() => {
-                      applyMutation.mutate(selectedJob.job_role_id);
-                      setSelectedJob(null);
+                      setApplyingJob(selectedJob);
                     }}
-                    disabled={applyMutation.isPending}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold px-8 py-2.5 rounded-xl transition"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-2.5 rounded-xl transition"
                   >
                     Apply Now
                   </button>
@@ -292,6 +271,19 @@ export default function FresherExploreJobsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {applyingJob && (
+        <FresherApplyWizard
+          job={applyingJob}
+          onClose={() => setApplyingJob(null)}
+          onSuccess={() => {
+            setAppliedIds(prev => new Set([...prev, applyingJob.job_role_id]));
+            setApplyingJob(null);
+            setSelectedJob(null);
+            qc.invalidateQueries({ queryKey: ['fresher-applications'] });
+          }}
+        />
       )}
     </div>
   );

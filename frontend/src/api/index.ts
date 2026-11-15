@@ -93,3 +93,12 @@ export const draftsApi = {
   update:  (id: string, data: object) => api.patch(`/drafts/${id}`, data),
   discard: (id: string) => api.delete(`/drafts/${id}`),
 };
+
+// ── Profile / Applications ─────────────────────────────────────────────────
+export const profileApi = {
+  getJobApplicants: (jobId: string) => api.get(`/profile/recruiter/jobs/${jobId}/applicants`),
+  getApplicationDetail: (applicationId: string) => api.get(`/profile/recruiter/applications/${applicationId}`),
+  getResume: (applicationId: string) => `${api.defaults.baseURL}/profile/recruiter/applications/${applicationId}/resume`,
+  updateApplicationStatus: (applicationId: string, data: object) => api.patch(`/profile/recruiter/applications/${applicationId}/status`, data),
+  getAllApplicants: () => api.get('/profile/recruiter/all-applicants'),
+};

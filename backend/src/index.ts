@@ -14,6 +14,7 @@ import aiRoutes         from './routes/ai';
 import dashboardRoutes  from './routes/dashboard';
 import draftsRoutes     from './routes/drafts';
 import fresherRoutes    from './routes/fresher';
+import profileRoutes    from './routes/profile';
 import seedRoutes       from './routes/seed';
 import { errorHandler } from './middleware/errorHandler';
 import { pool }         from './config/database';
@@ -41,7 +42,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ── Health check ─────────────────────────────────────────────
 app.get('/health', async (_req, res) => {
@@ -63,6 +64,7 @@ app.use('/api/ai',           aiRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/drafts',       draftsRoutes);
 app.use('/api/fresher',      fresherRoutes);
+app.use('/api/profile',      profileRoutes);
 app.use('/api/seed',         seedRoutes);
 
 // ── 404 ──────────────────────────────────────────────────────

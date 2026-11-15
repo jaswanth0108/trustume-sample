@@ -2,13 +2,14 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Briefcase, MessageSquare,
-  FileText, CheckSquare, Bot, Settings,
+  FileText, CheckSquare, Bot, Settings, Users2,
 } from 'lucide-react';
 
 const NAV = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard'     },
   { to: '/candidates',    icon: Users,            label: 'Candidates'    },
   { to: '/jobs',          icon: Briefcase,        label: 'Job Roles'     },
+  { to: '/applicants',    icon: Users2,           label: 'Applicants'    },
   { to: '/conversations', icon: MessageSquare,    label: 'Conversations' },
   { to: '/drafts',        icon: FileText,         label: 'Drafts'        },
   { to: '/tasks',         icon: CheckSquare,      label: 'Follow-ups'    },
