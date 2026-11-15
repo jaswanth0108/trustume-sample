@@ -18,6 +18,7 @@ import FresherLayout from './components/fresher/FresherLayout';
 import FresherLoginPage from './pages/fresher/FresherLoginPage';
 import FresherDashboardPage from './pages/fresher/FresherDashboardPage';
 import FresherConversationPage from './pages/fresher/FresherConversationPage';
+import FresherExploreJobsPage from './pages/fresher/FresherExploreJobsPage';
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
       }>
         <Route index element={<Navigate to="/fresher/dashboard" replace />} />
         <Route path="dashboard"                    element={<FresherDashboardPage />} />
+        <Route path="explore"                      element={<FresherExploreJobsPage />} />
         <Route path="conversation/:applicationId"  element={<FresherConversationPage />} />
       </Route>
 

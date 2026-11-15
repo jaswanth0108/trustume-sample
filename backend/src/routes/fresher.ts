@@ -199,4 +199,103 @@ router.post('/applications/:applicationId/reply', fresherAuthMiddleware, async (
   }
 });
 
+// ─── GET /api/fresher/jobs — browse all active job listings ───────────────
+router.get('/jobs', async (_req, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT
+         job_role_id,
+         role_title,
+         department,
+         job_description,
+         min_experience,
+         max_experience,
+         salary_min,
+         salary_max,
+         currency_code,
+         location,
+         employment_type,
+         status,
+         created_at
+       FROM job_roles
+       WHERE status = 'active'
+       ORDER BY created_at DESC`
+    );
+    res.json({ jobs: result.rows });
+  } catch (err) {
+    console.error('[Fresher] Jobs list error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /api/fresher/jobs/:jobId — get one job detail ───────────────────
+router.get('/jobs/:jobId', async (req, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT * FROM job_roles WHERE job_role_id = $1 AND status = 'active'`,
+      [req.params.jobId]
+    );
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Job not found or no longer available' }) as unknown as void;
+    }
+    res.json({ job: result.rows[0] });
+  } catch (err) {
+    console.error('[Fresher] Job detail error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /api/fresher/jobs/:jobId/apply ─────────────────────────────────
+router.post('/jobs/:jobId/apply', fresherAuthMiddleware, async (req: FresherRequest, res: Response) => {
+  try {
+    const { candidate_id } = req.candidate!;
+    const { jobId } = req.params;
+
+    // 1. Verify job exists and is active
+    const jobResult = await query(
+      `SELECT job_role_id, role_title, status FROM job_roles WHERE job_role_id = $1`,
+      [jobId]
+    );
+    if (!jobResult.rows.length) {
+      return res.status(404).json({ error: 'Job not found' }) as unknown as void;
+    }
+    const job = jobResult.rows[0];
+    if (job.status !== 'active') {
+      return res.status(400).json({ error: 'This job is no longer accepting applications' }) as unknown as void;
+    }
+
+    // 2. Check if already applied
+    const existing = await query(
+      `SELECT application_id FROM applications WHERE candidate_id = $1 AND job_role_id = $2`,
+      [candidate_id, jobId]
+    );
+    if (existing.rows.length) {
+      return res.status(409).json({ error: 'You have already applied for this job', alreadyApplied: true }) as unknown as void;
+    }
+
+    // 3. Find any recruiter to associate (required by applications table FK)
+    const recruiterResult = await query(
+      `SELECT recruiter_id FROM recruiters WHERE role = 'recruiter' OR role IS NULL ORDER BY created_at ASC LIMIT 1`
+    );
+    if (!recruiterResult.rows.length) {
+      return res.status(500).json({ error: 'No recruiter available' }) as unknown as void;
+    }
+    const recruiter_id = recruiterResult.rows[0].recruiter_id;
+
+    // 4. Create application
+    const appResult = await query(
+      `INSERT INTO applications
+         (candidate_id, job_role_id, recruiter_id, application_status, interest_status)
+       VALUES ($1, $2, $3, 'new', 'interested')
+       RETURNING *`,
+      [candidate_id, jobId, recruiter_id]
+    );
+
+    res.status(201).json({ application: appResult.rows[0], message: `Successfully applied to ${job.role_title}!` });
+  } catch (err) {
+    console.error('[Fresher] Apply error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

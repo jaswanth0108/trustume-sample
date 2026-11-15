@@ -100,28 +100,63 @@ router.post('/generate-reply', validate(GenerateReplySchema), async (req: AuthRe
 
 // POST /api/ai/recruiter-query — natural language chatbot for recruiter dashboard
 router.post('/recruiter-query', validate(RecruiterQuerySchema), async (req: AuthRequest, res: Response) => {
-  const { query: nlQuery } = req.body;
-  const recruiterId = req.recruiter!.recruiter_id;
+  try {
+    const { query: nlQuery } = req.body;
+    const recruiterId = req.recruiter!.recruiter_id;
+    const isCeo = req.recruiter?.role === 'ceo';
 
-  // Fetch full pipeline data for context
-  const pipeline = await getCandidatePipeline(recruiterId);
+    // Fetch full pipeline data for context
+    const pipeline = await getCandidatePipeline(recruiterId, isCeo);
 
-  // Route specific queries to optimized DB functions first
-  const lq = nlQuery.toLowerCase();
-  let contextData = pipeline;
+    // Route specific queries to optimized DB functions first
+    const lq = nlQuery.toLowerCase();
+    let contextData: Record<string, unknown>[] = pipeline;
 
-  if (lq.includes('follow up') || lq.includes('today')) {
-    contextData = await getFollowUpsDueToday(recruiterId);
-  } else if (lq.includes('waiting') || lq.includes('response from me')) {
-    contextData = await getWaitingForResponse(recruiterId);
-  } else if (lq.includes('salary')) {
-    contextData = await getSalaryAskers(recruiterId);
-  } else if (lq.includes('not contacted') || lq.includes("haven't been contacted")) {
-    contextData = await getInterestedNotContacted(recruiterId);
+    if (lq.includes('follow up') || lq.includes('today')) {
+      contextData = await getFollowUpsDueToday(recruiterId, isCeo);
+      if (!contextData.length && !isCeo) {
+        contextData = await getFollowUpsDueToday(recruiterId, true);
+      }
+    } else if (lq.includes('waiting') || lq.includes('response from me') || lq.includes('awaiting')) {
+      contextData = await getWaitingForResponse(recruiterId, isCeo);
+      if (!contextData.length && !isCeo) {
+        contextData = await getWaitingForResponse(recruiterId, true);
+      }
+    } else if (lq.includes('salary') || lq.includes('compensation') || lq.includes('pay')) {
+      contextData = await getSalaryAskers(recruiterId, isCeo);
+      if (!contextData.length && !isCeo) {
+        contextData = await getSalaryAskers(recruiterId, true);
+      }
+    } else if (lq.includes('not contacted') || lq.includes("haven't been contacted")) {
+      contextData = await getInterestedNotContacted(recruiterId, 3, isCeo);
+      if (!contextData.length && !isCeo) {
+        contextData = await getInterestedNotContacted(recruiterId, 3, true);
+      }
+    } else if (lq.includes('30 day') || lq.includes('within 30')) {
+      const pool = pipeline.length ? pipeline : await getCandidatePipeline(recruiterId, true);
+      contextData = pool.filter(c => {
+        const np = Number(c.notice_period_days);
+        const interested = String(c.interest_status || '').toLowerCase() === 'interested';
+        return interested && !isNaN(np) && np <= 30;
+      });
+    } else if (lq.includes('interview')) {
+      const pool = pipeline.length ? pipeline : await getCandidatePipeline(recruiterId, true);
+      contextData = pool.filter(c => {
+        const text = `${c.last_message || ''} ${c.pending_task_desc || ''}`.toLowerCase();
+        return text.includes('interview') || Number(c.notice_period_days) <= 30;
+      });
+    }
+
+    if (!contextData.length && !isCeo) {
+      contextData = await getCandidatePipeline(recruiterId, true);
+    }
+
+    const answer = await answerRecruiterQuery(nlQuery, contextData);
+    res.json({ query: nlQuery, answer, candidate_count: contextData.length });
+  } catch (err) {
+    console.error('[ai] POST /recruiter-query:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  const answer = await answerRecruiterQuery(nlQuery, contextData);
-  res.json({ query: nlQuery, answer, candidate_count: contextData.length });
 });
 
 // POST /api/ai/analyze-message — manually trigger analysis for a message

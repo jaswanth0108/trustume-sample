@@ -30,13 +30,14 @@ router.post('/', validate(CreateCandidateSchema), async (req: AuthRequest, res: 
 // GET /api/candidates  — list all candidates visible to this recruiter
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    const isCeo = req.recruiter?.role === 'ceo';
     const result = await query(
       `SELECT DISTINCT c.*
        FROM candidates c
        JOIN applications a ON a.candidate_id = c.candidate_id
-       WHERE a.recruiter_id = $1
+       WHERE ($2::boolean = true OR a.recruiter_id = $1)
        ORDER BY c.created_at DESC`,
-      [req.recruiter!.recruiter_id]
+      [req.recruiter!.recruiter_id, isCeo]
     );
     res.json(result.rows);
   } catch (err) {
@@ -49,6 +50,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const isCeo = req.recruiter?.role === 'ceo';
     const [candResult, appsResult] = await Promise.all([
       query(`SELECT * FROM candidates WHERE candidate_id = $1`, [id]),
       query(
@@ -56,8 +58,8 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
          FROM applications a
          JOIN job_roles jr ON jr.job_role_id = a.job_role_id
          LEFT JOIN application_details ad ON ad.application_id = a.application_id
-         WHERE a.candidate_id = $1 AND a.recruiter_id = $2`,
-        [id, req.recruiter!.recruiter_id]
+         WHERE a.candidate_id = $1 AND ($3::boolean = true OR a.recruiter_id = $2)`,
+        [id, req.recruiter!.recruiter_id, isCeo]
       ),
     ]);
     if (!candResult.rows.length) {

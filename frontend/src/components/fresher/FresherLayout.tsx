@@ -1,11 +1,12 @@
 import React from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useFresherAuth } from '../../context/FresherAuthContext';
 import toast from 'react-hot-toast';
 
 export default function FresherLayout() {
   const { candidate, logout, isLoading } = useFresherAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -26,6 +27,11 @@ export default function FresherLayout() {
     navigate('/fresher/login');
   };
 
+  const navLinks = [
+    { to: '/fresher/dashboard', label: '📋 My Applications' },
+    { to: '/fresher/explore',   label: '🔍 Explore Jobs' },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Nav */}
@@ -43,6 +49,24 @@ export default function FresherLayout() {
               <span className="text-indigo-200 text-xs ml-2">Candidate Portal</span>
             </div>
           </Link>
+
+          {/* Nav links */}
+          <nav className="hidden sm:flex items-center gap-1">
+            {navLinks.map(link => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`text-sm font-medium px-4 py-2 rounded-lg transition ${
+                  location.pathname === link.to
+                    ? 'bg-white/20 text-white'
+                    : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-white font-semibold text-sm">{candidate.full_name}</p>
@@ -55,6 +79,23 @@ export default function FresherLayout() {
               Sign Out
             </button>
           </div>
+        </div>
+
+        {/* Mobile nav */}
+        <div className="sm:hidden flex gap-1 px-4 pb-2">
+          {navLinks.map(link => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                location.pathname === link.to
+                  ? 'bg-white/20 text-white'
+                  : 'text-indigo-300 hover:text-white'
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
       </header>
 

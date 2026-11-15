@@ -19,6 +19,8 @@ export default function JobRolesPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'draft'>('all');
+
   const { data: roles = [], isLoading } = useQuery<JobRole[]>({
     queryKey: ['job-roles'],
     queryFn: () => jobRolesApi.list().then(r => r.data),
@@ -37,25 +39,63 @@ export default function JobRolesPage() {
 
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => jobRolesApi.setStatus(id, status),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-roles'] }); toast.success('Status updated'); },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['job-roles'] });
+      if (vars.status === 'closed') {
+        toast.success('Job role closed and removed');
+      } else if (vars.status === 'paused') {
+        toast.success('Job role saved as Draft');
+      } else {
+        toast.success('Job role activated');
+      }
+    },
   });
 
-  const filtered = roles.filter(r =>
-    r.role_title.toLowerCase().includes(search.toLowerCase()) ||
-    (r.department || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = roles.filter(r => {
+    const matchesSearch =
+      r.role_title.toLowerCase().includes(search.toLowerCase()) ||
+      (r.department || '').toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+    if (statusFilter === 'active') return r.status === 'active';
+    if (statusFilter === 'draft') return r.status === 'paused' || r.status === 'draft';
+    return true;
+  });
+
+  const activeCount = roles.filter(r => r.status === 'active').length;
+  const draftCount = roles.filter(r => r.status === 'paused' || r.status === 'draft').length;
 
   if (isLoading) return <PageLoader />;
 
-  const statusColor = (s: string) => s === 'active' ? 'badge-green' : s === 'paused' ? 'badge-yellow' : 'badge-gray';
+  const statusColor = (s: string) => (s === 'active' ? 'badge-green' : 'badge-yellow');
+  const statusLabel = (s: string) => (s === 'active' ? 'Active' : 'Draft');
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input className="input pl-9" placeholder="Search roles..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+
+        {/* Filter tabs */}
+        <div className="flex items-center bg-gray-100 p-1 rounded-xl text-xs font-medium">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 rounded-lg transition-all ${statusFilter === 'all' ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-700'}`}>
+            All ({roles.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('active')}
+            className={`px-3 py-1.5 rounded-lg transition-all ${statusFilter === 'active' ? 'bg-white shadow-sm text-emerald-700 font-semibold' : 'text-gray-500 hover:text-gray-700'}`}>
+            Active ({activeCount})
+          </button>
+          <button
+            onClick={() => setStatusFilter('draft')}
+            className={`px-3 py-1.5 rounded-lg transition-all ${statusFilter === 'draft' ? 'bg-white shadow-sm text-amber-700 font-semibold' : 'text-gray-500 hover:text-gray-700'}`}>
+            Draft ({draftCount})
+          </button>
+        </div>
+
         <button className="btn-primary ml-auto" onClick={() => setShowAdd(true)}>
           <Plus size={16} /> Add Role
         </button>
@@ -73,7 +113,7 @@ export default function JobRolesPage() {
                   <h3 className="font-semibold text-gray-900">{role.role_title}</h3>
                   {role.department && <p className="text-sm text-gray-500">{role.department}</p>}
                 </div>
-                <Badge className={statusColor(role.status)}>{role.status}</Badge>
+                <Badge className={statusColor(role.status)}>{statusLabel(role.status)}</Badge>
               </div>
 
               <div className="space-y-1.5 text-sm text-gray-600 mb-4">
@@ -105,12 +145,14 @@ export default function JobRolesPage() {
 
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                 <span className="text-xs text-gray-400">Created {timeAgo(role.created_at)}</span>
-                <select value={role.status} onChange={e => setStatus.mutate({ id: role.job_role_id, status: e.target.value })}
+                <select
+                  value={role.status === 'draft' ? 'paused' : role.status}
+                  onChange={e => setStatus.mutate({ id: role.job_role_id, status: e.target.value })}
                   onClick={e => e.stopPropagation()}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                  className="text-xs border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-brand-500 font-medium bg-white">
                   <option value="active">Active</option>
-                  <option value="paused">Paused</option>
-                  <option value="closed">Closed</option>
+                  <option value="paused">Draft</option>
+                  <option value="closed">Close & Remove</option>
                 </select>
               </div>
             </div>

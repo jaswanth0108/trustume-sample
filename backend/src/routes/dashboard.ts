@@ -16,7 +16,8 @@ router.use(authMiddleware);
 router.get('/triage', async (req: AuthRequest, res: Response) => {
   try {
     const recruiterId = req.recruiter!.recruiter_id;
-    const pipeline = await getCandidatePipeline(recruiterId);
+    const isCeo = req.recruiter?.role === 'ceo';
+    const pipeline = await getCandidatePipeline(recruiterId, isCeo);
 
     const groups = {
       interested:     pipeline.filter((c: { interest_status: string }) => c.interest_status === 'interested'),
@@ -36,7 +37,8 @@ router.get('/triage', async (req: AuthRequest, res: Response) => {
 // GET /api/dashboard/follow-ups — tasks due today
 router.get('/follow-ups', async (req: AuthRequest, res: Response) => {
   try {
-    const tasks = await getFollowUpsDueToday(req.recruiter!.recruiter_id);
+    const isCeo = req.recruiter?.role === 'ceo';
+    const tasks = await getFollowUpsDueToday(req.recruiter!.recruiter_id, isCeo);
     res.json({ count: tasks.length, tasks });
   } catch (err) {
     console.error('[dashboard] GET /follow-ups:', err);
@@ -47,7 +49,8 @@ router.get('/follow-ups', async (req: AuthRequest, res: Response) => {
 // GET /api/dashboard/waiting-response — candidates awaiting recruiter reply
 router.get('/waiting-response', async (req: AuthRequest, res: Response) => {
   try {
-    const candidates = await getWaitingForResponse(req.recruiter!.recruiter_id);
+    const isCeo = req.recruiter?.role === 'ceo';
+    const candidates = await getWaitingForResponse(req.recruiter!.recruiter_id, isCeo);
     res.json({ count: candidates.length, candidates });
   } catch (err) {
     console.error('[dashboard] GET /waiting-response:', err);
@@ -58,7 +61,8 @@ router.get('/waiting-response', async (req: AuthRequest, res: Response) => {
 // GET /api/dashboard/salary-queries — candidates who asked about salary
 router.get('/salary-queries', async (req: AuthRequest, res: Response) => {
   try {
-    const candidates = await getSalaryAskers(req.recruiter!.recruiter_id);
+    const isCeo = req.recruiter?.role === 'ceo';
+    const candidates = await getSalaryAskers(req.recruiter!.recruiter_id, isCeo);
     res.json({ count: candidates.length, candidates });
   } catch (err) {
     console.error('[dashboard] GET /salary-queries:', err);
@@ -69,8 +73,9 @@ router.get('/salary-queries', async (req: AuthRequest, res: Response) => {
 // GET /api/dashboard/not-contacted?days=3 — interested, not contacted in N days
 router.get('/not-contacted', async (req: AuthRequest, res: Response) => {
   try {
+    const isCeo = req.recruiter?.role === 'ceo';
     const days = parseInt((req.query.days as string) || '3', 10);
-    const candidates = await getInterestedNotContacted(req.recruiter!.recruiter_id, days);
+    const candidates = await getInterestedNotContacted(req.recruiter!.recruiter_id, days, isCeo);
     res.json({ count: candidates.length, days, candidates });
   } catch (err) {
     console.error('[dashboard] GET /not-contacted:', err);
@@ -81,6 +86,7 @@ router.get('/not-contacted', async (req: AuthRequest, res: Response) => {
 // GET /api/dashboard/stats — summary numbers
 router.get('/stats', async (req: AuthRequest, res: Response) => {
   try {
+    const isCeo = req.recruiter?.role === 'ceo';
     const result = await query(
       `SELECT
          COUNT(*)                                                              AS total,
@@ -89,15 +95,15 @@ router.get('/stats', async (req: AuthRequest, res: Response) => {
          COUNT(*) FILTER (WHERE interest_status = 'unknown')                  AS unknown,
          COUNT(*) FILTER (WHERE application_status = 'interview')             AS in_interview,
          COUNT(*) FILTER (WHERE application_status = 'offer')                 AS offer_stage
-       FROM applications WHERE recruiter_id = $1
-         AND application_status NOT IN ('hired','rejected','closed')`,
-      [req.recruiter!.recruiter_id]
+       FROM applications WHERE ($2::boolean = true OR recruiter_id = $1)
+         AND application_status NOT IN ('hired','rejected')`,
+      [req.recruiter!.recruiter_id, isCeo]
     );
     const followUpsResult = await query(
       `SELECT COUNT(*) AS due_today FROM follow_up_tasks
-       WHERE recruiter_id = $1 AND task_status = 'pending'
+       WHERE ($2::boolean = true OR recruiter_id = $1) AND task_status = 'pending'
          AND due_at <= NOW() + INTERVAL '24 hours'`,
-      [req.recruiter!.recruiter_id]
+      [req.recruiter!.recruiter_id, isCeo]
     );
     res.json({ ...result.rows[0], follow_ups_due_today: followUpsResult.rows[0].due_today });
   } catch (err) {
@@ -109,13 +115,14 @@ router.get('/stats', async (req: AuthRequest, res: Response) => {
 // PATCH /api/dashboard/follow-ups/:taskId — update task status
 router.patch('/follow-ups/:taskId', async (req: AuthRequest, res: Response) => {
   try {
+    const isCeo = req.recruiter?.role === 'ceo';
     const { task_status } = req.body as { task_status: string };
     const result = await query(
       `UPDATE follow_up_tasks
        SET task_status = $1,
            completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE NULL END
-       WHERE task_id = $2 AND recruiter_id = $3 RETURNING *`,
-      [task_status, req.params.taskId, req.recruiter!.recruiter_id]
+       WHERE task_id = $2 AND ($4::boolean = true OR recruiter_id = $3) RETURNING *`,
+      [task_status, req.params.taskId, req.recruiter!.recruiter_id, isCeo]
     );
     if (!result.rows.length) {
       return res.status(404).json({ error: 'Task not found' }) as unknown as void;

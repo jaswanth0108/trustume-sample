@@ -29,10 +29,10 @@ router.post('/', validate(CreateJobRoleSchema), async (req: AuthRequest, res: Re
   }
 });
 
-// GET /api/job-roles
+// GET /api/job-roles — return all active and draft (paused) job roles; closed roles are excluded
 router.get('/', async (_req: AuthRequest, res: Response) => {
   try {
-    const result = await query(`SELECT * FROM job_roles WHERE status = 'active' ORDER BY created_at DESC`);
+    const result = await query(`SELECT * FROM job_roles WHERE status != 'closed' ORDER BY created_at DESC`);
     res.json(result.rows);
   } catch (err) {
     console.error('[job-roles] GET /:', err);
@@ -54,10 +54,25 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// PATCH /api/job-roles/:id/status
+// PATCH /api/job-roles/:id/status — update status (active, paused/draft, or closed)
 router.patch('/:id/status', async (req: AuthRequest, res: Response) => {
   try {
     const { status } = req.body as { status: string };
+
+    if (status === 'closed') {
+      // If closed, remove completely: attempt hard delete first, fallback to setting status='closed'
+      try {
+        await query(`DELETE FROM job_roles WHERE job_role_id = $1`, [req.params.id]);
+        return res.json({ job_role_id: req.params.id, status: 'closed', removed: true }) as unknown as void;
+      } catch {
+        const result = await query(
+          `UPDATE job_roles SET status = 'closed' WHERE job_role_id = $1 RETURNING *`,
+          [req.params.id]
+        );
+        return res.json(result.rows[0]) as unknown as void;
+      }
+    }
+
     const result = await query(
       `UPDATE job_roles SET status = $1 WHERE job_role_id = $2 RETURNING *`,
       [status, req.params.id]

@@ -20,4 +20,14 @@ export const fresherApi = {
 
   sendReply:   (applicationId: string, message_body: string) =>
     axios.post(`${BASE}/fresher/applications/${applicationId}/reply`, { message_body }, { headers: h() }),
+
+  // ── Explore Jobs ────────────────────────────────────────────────────────
+  getJobs:     () =>
+    axios.get(`${BASE}/fresher/jobs`, { headers: h() }),
+
+  getJobDetail: (jobId: string) =>
+    axios.get(`${BASE}/fresher/jobs/${jobId}`, { headers: h() }),
+
+  applyToJob:  (jobId: string) =>
+    axios.post(`${BASE}/fresher/jobs/${jobId}/apply`, {}, { headers: h() }),
 };

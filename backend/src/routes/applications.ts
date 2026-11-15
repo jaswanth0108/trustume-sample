@@ -46,6 +46,7 @@ router.post('/', validate(CreateApplicationSchema), async (req: AuthRequest, res
 // GET /api/applications — list all applications for this recruiter
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    const isCeo = req.recruiter?.role === 'ceo';
     const result = await query(
       `SELECT
          a.*,
@@ -62,9 +63,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
        JOIN candidates   c  ON c.candidate_id  = a.candidate_id
        JOIN job_roles    jr ON jr.job_role_id  = a.job_role_id
        LEFT JOIN application_details ad ON ad.application_id = a.application_id
-       WHERE a.recruiter_id = $1
+       WHERE ($2::boolean = true OR a.recruiter_id = $1)
        ORDER BY a.updated_at DESC`,
-      [req.recruiter!.recruiter_id]
+      [req.recruiter!.recruiter_id, isCeo]
     );
     res.json(result.rows);
   } catch (err) {
@@ -76,6 +77,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // GET /api/applications/:id — single application with full details (includes thread_id)
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const isCeo = req.recruiter?.role === 'ceo';
     const [appResult, fieldsResult, questionsResult] = await Promise.all([
       query(
         `SELECT a.*, c.full_name AS candidate_name, c.email AS candidate_email,
@@ -86,9 +88,9 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
          JOIN job_roles jr ON jr.job_role_id = a.job_role_id
          LEFT JOIN application_details ad ON ad.application_id = a.application_id
          LEFT JOIN conversation_threads ct ON ct.application_id = a.application_id
-         WHERE a.application_id = $1 AND a.recruiter_id = $2
+         WHERE a.application_id = $1 AND ($3::boolean = true OR a.recruiter_id = $2)
          LIMIT 1`,
-        [req.params.id, req.recruiter!.recruiter_id]
+        [req.params.id, req.recruiter!.recruiter_id, isCeo]
       ),
       query(
         `SELECT fd.field_key, fd.field_label, arf.collection_status,

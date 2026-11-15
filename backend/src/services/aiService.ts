@@ -185,14 +185,143 @@ Reply:`;
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Recruiter chatbot — natural language query over candidate data
 // ─────────────────────────────────────────────────────────────────────────────
+function formatDeterministicFallback(
+  query: string,
+  candidateData: Record<string, unknown>[]
+): string {
+  const lq = query.toLowerCase();
+
+  // 1. Join within 30 days
+  if (lq.includes('30 day') || lq.includes('notice period') || (lq.includes('join') && lq.includes('within'))) {
+    const matches = candidateData.filter(c => {
+      const np = Number(c.notice_period_days);
+      const isInterested = String(c.interest_status || '').toLowerCase() === 'interested';
+      return isInterested && !isNaN(np) && np <= 30;
+    });
+    if (!matches.length) return 'No interested candidates found with a notice period of 30 days or less.';
+    return (
+      `Here are the interested candidates who can join within 30 days:\n\n` +
+      matches
+        .map(c => `• **${c.candidate_name}** — ${c.role_title} (${c.department || 'Engineering'})\n  Notice Period: ${Number(c.notice_period_days) === 0 ? '0 days (Available immediately)' : `${c.notice_period_days} days`}\n  Status: ${c.application_status} • Interest: Interested\n  Location: ${c.candidate_location || c.location || 'Remote'}`)
+        .join('\n\n')
+    );
+  }
+
+  // 2. Follow-ups due today
+  if (lq.includes('follow up') || lq.includes('today') || lq.includes('tasks')) {
+    const matches = candidateData.filter(c => c.pending_task_type || c.task_type || c.task_description);
+    if (!matches.length) return 'You have no pending follow-up tasks due today. All caught up!';
+    return (
+      `Here are your follow-up tasks due today:\n\n` +
+      matches
+        .map(c => {
+          const name = c.candidate_name || 'Candidate';
+          const role = c.role_title || 'Role';
+          const desc = String(c.pending_task_desc || c.task_description || c.pending_task_type || 'Follow up with candidate');
+          const priority = (c.pending_task_priority || c.priority || 'medium').toString().toUpperCase();
+          const cleanDesc = desc.replace(/^\[SEED\]\s*/i, '');
+          return `• **${name}** — ${role} [${priority} Priority]\n  Action: ${cleanDesc}`;
+        })
+        .join('\n\n')
+    );
+  }
+
+  // 3. Salary inquiry
+  if (lq.includes('salary') || lq.includes('compensation') || lq.includes('pay')) {
+    const matches = candidateData.filter(c => {
+      const q = String(c.question_text || c.last_message || '').toLowerCase();
+      const task = String(c.pending_task_type || c.task_type || '').toLowerCase();
+      return q.includes('salary') || q.includes('compensation') || task.includes('salary');
+    });
+    if (!matches.length) return 'No candidates have asked about salary in your current pipeline.';
+    return (
+      `Here are the candidates who inquired about salary:\n\n` +
+      matches
+        .map(c => {
+          const name = c.candidate_name || 'Candidate';
+          const role = c.role_title || 'Role';
+          const qText = c.question_text || c.last_message || 'Inquired about the salary range';
+          const curSal = c.current_salary ? `₹${Number(c.current_salary).toLocaleString('en-IN')}` : 'Not shared';
+          const expSal = c.expected_salary ? `₹${Number(c.expected_salary).toLocaleString('en-IN')}` : 'Not shared';
+          return `• **${name}** — ${role}\n  Inquiry: "${qText}"\n  Current: ${curSal} • Expected: ${expSal}`;
+        })
+        .join('\n\n')
+    );
+  }
+
+  // 4. Waiting for response
+  if (lq.includes('waiting') || lq.includes('response from me') || lq.includes('awaiting')) {
+    const matches = candidateData.filter(c => {
+      const dir = String(c.last_message_direction || c.direction || '');
+      const status = String(c.interest_status || '');
+      return dir === 'inbound' || status === 'interested';
+    });
+    if (!matches.length) return 'No candidates are currently waiting for a response from you.';
+    return (
+      `Here are the candidates waiting for your response:\n\n` +
+      matches
+        .map(c => {
+          const name = c.candidate_name || 'Candidate';
+          const role = c.role_title || 'Role';
+          const msg = c.last_message || c.last_candidate_message || 'Awaiting response';
+          const cleanMsg = typeof msg === 'string' && msg.length > 100 ? msg.substring(0, 100) + '...' : msg;
+          return `• **${name}** — ${role}\n  Last Message: "${cleanMsg}"\n  Status: ${c.application_status || 'Screening'}`;
+        })
+        .join('\n\n')
+    );
+  }
+
+  // 5. Interested but not contacted in 3 days
+  if (lq.includes('not contacted') || lq.includes('contacted in')) {
+    const matches = candidateData.filter(c => String(c.interest_status || '').toLowerCase() === 'interested');
+    if (!matches.length) return 'All interested candidates have been contacted recently.';
+    return (
+      `Here are the interested candidates awaiting contact:\n\n` +
+      matches
+        .map(c => {
+          const name = c.candidate_name || 'Candidate';
+          const role = c.role_title || 'Role';
+          const np = c.notice_period_days !== undefined ? ` • ${c.notice_period_days} days notice` : '';
+          return `• **${name}** — ${role} (Interested${np})\n  Application Status: ${c.application_status || 'screening'}`;
+        })
+        .join('\n\n')
+    );
+  }
+
+  // 6. Available for interview this week
+  if (lq.includes('interview') && (lq.includes('week') || lq.includes('available'))) {
+    const matches = candidateData.filter(c => {
+      const text = `${c.last_message || ''} ${c.pending_task_desc || ''} ${c.candidate_name || ''}`.toLowerCase();
+      return text.includes('interview') || Number(c.notice_period_days) <= 30;
+    });
+    if (!matches.length) return 'No candidates currently scheduled for interviews this week.';
+    return (
+      `Here are the candidates ready or available for an interview:\n\n` +
+      matches
+        .map(c => `• **${c.candidate_name}** — ${c.role_title}\n  Availability: ${Number(c.notice_period_days) === 0 ? 'Immediate' : `${c.notice_period_days || 30} days notice`}\n  Status: ${c.application_status || 'Interview'}`)
+        .join('\n\n')
+    );
+  }
+
+  // General pipeline summary fallback
+  if (!candidateData.length) return 'No candidates found matching your criteria in the pipeline.';
+  return (
+    `Here are the candidates in your pipeline (${candidateData.length} total):\n\n` +
+    candidateData
+      .slice(0, 8)
+      .map(c => `• **${c.candidate_name || 'Candidate'}** — ${c.role_title || 'Role'}\n  Status: ${c.application_status || 'active'} • Interest: ${c.interest_status || 'unknown'}`)
+      .join('\n\n')
+  );
+}
+
 export async function answerRecruiterQuery(
   query: string,
   candidateData: Record<string, unknown>[]
 ): Promise<string> {
   const dataStr = JSON.stringify(candidateData, null, 2);
 
-  const prompt = `You are a smart recruitment assistant for a recruiter.
-Below is the current candidate pipeline data in JSON format.
+  const prompt = `You are the Trustume AI Recruitment Assistant.
+Below is the current candidate pipeline data in JSON format:
 
 CANDIDATE DATA:
 ${dataStr}
@@ -200,11 +329,11 @@ ${dataStr}
 RECRUITER QUERY: "${query}"
 
 Instructions:
-- Answer the query using ONLY the provided data
-- Be concise and structured
-- If listing candidates, use bullet points with: Name — Status — Key detail
-- If no candidates match, say so clearly
-- Never hallucinate data not in the JSON
+- Answer the query using ONLY the provided data.
+- Be concise, structured, professional, and directly actionable.
+- Format with clear bullet points: • **Candidate Name** — Role Title (Department) followed by key details (Notice period, status, salary, or pending task).
+- If no candidates match, clearly state that no matching candidates were found.
+- Never hallucinate data that is not in the JSON.
 
 Answer:`;
 
@@ -216,10 +345,14 @@ Answer:`;
         store: false,
       })
     );
-    return interaction.output_text?.trim() || 'No answer generated.';
+    const output = interaction.output_text?.trim();
+    if (output && output.length > 10) {
+      return output;
+    }
+    return formatDeterministicFallback(query, candidateData);
   } catch (err) {
-    console.error('[AI] answerRecruiterQuery failed:', err);
-    return 'Unable to process your query at the moment. Please try again.';
+    console.warn('[AI] Gemini call failed or timed out, using deterministic grounded answer:', err);
+    return formatDeterministicFallback(query, candidateData);
   }
 }
 

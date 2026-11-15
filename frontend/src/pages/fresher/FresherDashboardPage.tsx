@@ -106,7 +106,13 @@ export default function FresherDashboardPage() {
         <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
           <div className="text-5xl mb-4">📭</div>
           <h3 className="text-lg font-semibold text-gray-700">No Applications Yet</h3>
-          <p className="text-gray-400 text-sm mt-2">Your recruiter will contact you when there's a suitable opportunity.</p>
+          <p className="text-gray-400 text-sm mt-2 mb-6">Browse available jobs and start applying!</p>
+          <Link
+            to="/fresher/explore"
+            className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition"
+          >
+            🔍 Explore Jobs
+          </Link>
         </div>
       ) : (
         <div className="space-y-4">
