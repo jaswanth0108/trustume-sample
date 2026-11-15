@@ -14,6 +14,7 @@ import aiRoutes         from './routes/ai';
 import dashboardRoutes  from './routes/dashboard';
 import draftsRoutes     from './routes/drafts';
 import fresherRoutes    from './routes/fresher';
+import seedRoutes       from './routes/seed';
 import { errorHandler } from './middleware/errorHandler';
 import { pool }         from './config/database';
 
@@ -62,6 +63,7 @@ app.use('/api/ai',           aiRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/drafts',       draftsRoutes);
 app.use('/api/fresher',      fresherRoutes);
+app.use('/api/seed',         seedRoutes);
 
 // ── 404 ──────────────────────────────────────────────────────
 app.use((_req, res) => {
