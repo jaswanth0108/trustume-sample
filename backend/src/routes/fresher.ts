@@ -6,6 +6,40 @@ import { fresherAuthMiddleware, FresherRequest } from '../middleware/fresherAuth
 
 const router = Router();
 
+// ─── POST /api/fresher/register ───────────────────────────────────────────
+router.post('/register', async (req: Request, res: Response) => {
+  try {
+    const { full_name, email, password, phone, location } = req.body;
+    if (!full_name?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ error: 'Full name, email, and password are required' }) as unknown as void;
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' }) as unknown as void;
+    }
+    // Check if email already exists
+    const existing = await query(`SELECT candidate_id FROM candidates WHERE email = $1`, [email.toLowerCase().trim()]);
+    if (existing.rows.length) {
+      return res.status(409).json({ error: 'An account with this email already exists' }) as unknown as void;
+    }
+    const password_hash = await bcrypt.hash(password, 12);
+    const result = await query(
+      `INSERT INTO candidates (full_name, email, phone, location, password_hash)
+       VALUES ($1, $2, $3, $4, $5) RETURNING candidate_id, full_name, email, phone, location`,
+      [full_name.trim(), email.toLowerCase().trim(), phone || null, location || null, password_hash]
+    );
+    const candidate = result.rows[0];
+    const token = jwt.sign(
+      { candidate_id: candidate.candidate_id, email: candidate.email, full_name: candidate.full_name },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+    res.status(201).json({ candidate, token });
+  } catch (err) {
+    console.error('[Fresher] Register error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ─── POST /api/fresher/login ───────────────────────────────────────────────
 router.post('/login', async (req: Request, res: Response) => {
   try {
@@ -195,6 +229,22 @@ router.post('/applications/:applicationId/reply', fresherAuthMiddleware, async (
     res.status(201).json({ message: msgRes.rows[0] });
   } catch (err) {
     console.error('[Fresher] Reply error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /api/fresher/applied-jobs — returns job IDs the candidate applied to ─
+router.get('/applied-jobs', fresherAuthMiddleware, async (req: FresherRequest, res: Response) => {
+  try {
+    const { candidate_id } = req.candidate!;
+    const result = await query(
+      `SELECT job_role_id FROM applications WHERE candidate_id = $1`,
+      [candidate_id]
+    );
+    const appliedJobIds = result.rows.map(r => r.job_role_id as string);
+    res.json({ appliedJobIds });
+  } catch (err) {
+    console.error('[Fresher] Applied jobs error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

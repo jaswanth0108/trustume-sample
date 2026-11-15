@@ -470,19 +470,19 @@ NODE_ENV=production
 
 | Role | Email | Password |
 |------|-------|---------|
-| Recruiter | `sarah@trustume.com` | `Recruiter@123` |
-| Recruiter | `michael@trustume.com` | `Recruiter@123` |
-| CEO | `ceo@trustume.com` | `CEO@123456` |
+| Recruiter | `sarah@gmail.com` | `Recruiter@123` |
+| Recruiter | `michael@gmail.com` | `Recruiter@123` |
+| CEO | `ceo@gmail.com` | `CEO@123456` |
 
 ### Candidates (Fresher Portal at `/fresher/login`)
 
 | Name | Email | Password |
 |------|-------|---------|
-| Rahul Sharma | `rahul@seed.trustume.com` | `Fresher@123` |
-| Priya Patel | `priya@seed.trustume.com` | `Fresher@123` |
-| Arjun Mehta | `arjun@seed.trustume.com` | `Fresher@123` |
-| Sneha Reddy | `sneha@seed.trustume.com` | `Fresher@123` |
-| Kiran Kumar | `kiran@seed.trustume.com` | `Fresher@123` |
+| Rahul Sharma | `rahul@gmail.com` | `Fresher@123` |
+| Priya Patel | `priya@gmail.com` | `Fresher@123` |
+| Arjun Mehta | `arjun@gmail.com` | `Fresher@123` |
+| Sneha Reddy | `sneha@gmail.com` | `Fresher@123` |
+| Kiran Kumar | `kiran@gmail.com` | `Fresher@123` |
 
 ---
 

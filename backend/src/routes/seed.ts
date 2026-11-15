@@ -1,5 +1,5 @@
 /**
- * ONE-TIME SEED ROUTE — DELETE AFTER USE
+ * ONE-TIME SEED ROUTE
  * POST /api/seed?secret=trustume-seed-2024
  * This runs inside Render using the already-connected Neon pool.
  */
@@ -10,7 +10,6 @@ import { pool } from '../config/database';
 const router = Router();
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  // Simple secret guard so random people can't trigger it
   const secret = req.query.secret || req.body.secret;
   if (secret !== 'trustume-seed-2024') {
     res.status(403).json({ error: 'Forbidden' });
@@ -23,12 +22,71 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     // ── Schema migrations ────────────────────────────────────────────────────
     L('Running schema migrations...');
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS citext`);
     await pool.query(`ALTER TABLE recruiters ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'recruiter'`);
     await pool.query(`ALTER TABLE candidates  ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
+    await pool.query(`ALTER TABLE candidates  ADD COLUMN IF NOT EXISTS github_url TEXT`);
+    await pool.query(`ALTER TABLE candidates  ADD COLUMN IF NOT EXISTS portfolio_url TEXT`);
+    await pool.query(`ALTER TABLE candidates  ADD COLUMN IF NOT EXISTS headline VARCHAR(200)`);
+    await pool.query(`ALTER TABLE candidates  ADD COLUMN IF NOT EXISTS education TEXT`);
+    await pool.query(`ALTER TABLE candidates  ADD COLUMN IF NOT EXISTS experience_years NUMERIC(4,1)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS candidate_skills (
+      skill_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      candidate_id UUID NOT NULL REFERENCES candidates(candidate_id) ON DELETE CASCADE,
+      skill_name VARCHAR(100) NOT NULL,
+      proficiency VARCHAR(20) DEFAULT 'intermediate' CHECK (proficiency IN ('beginner','intermediate','advanced')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_candidate_skills ON candidate_skills(candidate_id)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS candidate_projects (
+      project_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      candidate_id UUID NOT NULL REFERENCES candidates(candidate_id) ON DELETE CASCADE,
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      technologies TEXT,
+      repo_url TEXT,
+      live_url TEXT,
+      contribution TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_candidate_projects ON candidate_projects(candidate_id)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS application_submissions (
+      submission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      application_id UUID UNIQUE NOT NULL REFERENCES applications(application_id) ON DELETE CASCADE,
+      full_name VARCHAR(150),
+      email CITEXT,
+      phone VARCHAR(30),
+      location VARCHAR(200),
+      headline VARCHAR(200),
+      education TEXT,
+      experience_years NUMERIC(4,1),
+      linkedin_url TEXT,
+      github_url TEXT,
+      portfolio_url TEXT,
+      resume_filename VARCHAR(255),
+      resume_mimetype VARCHAR(100),
+      resume_data TEXT,
+      skills_snapshot JSONB DEFAULT '[]',
+      projects_snapshot JSONB DEFAULT '[]',
+      motivation TEXT,
+      suitability TEXT,
+      notice_period_days INT,
+      willing_to_relocate BOOLEAN DEFAULT false,
+      additional_info TEXT,
+      recruiter_notes TEXT,
+      verification_status VARCHAR(30) DEFAULT 'submitted'
+        CHECK (verification_status IN ('submitted','under_review','shortlisted','rejected','interview_scheduled','selected')),
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_app_submissions_app ON application_submissions(application_id)`);
     L('Schema migrations done');
 
     // ── Hash passwords ───────────────────────────────────────────────────────
-    const COST = 10; // lower cost = faster seed
+    const COST = 10;
     const recruiterHash = await bcrypt.hash('Recruiter@123', COST);
     const ceoHash       = await bcrypt.hash('CEO@123456',    COST);
     const fresherHash   = await bcrypt.hash('Fresher@123',   COST);
@@ -38,27 +96,34 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     await pool.query(`DELETE FROM follow_up_tasks   WHERE task_description LIKE '%[SEED]%'`);
     await pool.query(`DELETE FROM reply_drafts      WHERE draft_content    LIKE '%[SEED]%'`);
     await pool.query(`DELETE FROM message_analyses  WHERE model_name = 'seed-data'`);
+    await pool.query(`DELETE FROM application_submissions WHERE email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR email LIKE '%@seed.trustume.com'`);
     await pool.query(`DELETE FROM messages WHERE sender_email LIKE '%@seed.trustume.com'
+      OR sender_email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com','sarah@gmail.com','michael@gmail.com')
       OR thread_id IN (
         SELECT t.thread_id FROM conversation_threads t
         JOIN applications a ON t.application_id = a.application_id
         JOIN candidates c ON a.candidate_id = c.candidate_id
-        WHERE c.email LIKE '%@seed.trustume.com')`);
+        WHERE c.email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR c.email LIKE '%@seed.trustume.com')`);
     await pool.query(`DELETE FROM conversation_threads WHERE application_id IN (
       SELECT a.application_id FROM applications a
       JOIN candidates c ON a.candidate_id = c.candidate_id
-      WHERE c.email LIKE '%@seed.trustume.com')`);
+      WHERE c.email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR c.email LIKE '%@seed.trustume.com')`);
     await pool.query(`DELETE FROM application_details WHERE application_id IN (
       SELECT a.application_id FROM applications a
       JOIN candidates c ON a.candidate_id = c.candidate_id
-      WHERE c.email LIKE '%@seed.trustume.com')`);
+      WHERE c.email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR c.email LIKE '%@seed.trustume.com')`);
     await pool.query(`DELETE FROM applications WHERE candidate_id IN (
-      SELECT candidate_id FROM candidates WHERE email LIKE '%@seed.trustume.com')`);
-    await pool.query(`DELETE FROM candidates WHERE email LIKE '%@seed.trustume.com'`);
+      SELECT candidate_id FROM candidates WHERE email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR email LIKE '%@seed.trustume.com')`);
+    await pool.query(`DELETE FROM candidate_skills WHERE candidate_id IN (
+      SELECT candidate_id FROM candidates WHERE email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR email LIKE '%@seed.trustume.com')`);
+    await pool.query(`DELETE FROM candidate_projects WHERE candidate_id IN (
+      SELECT candidate_id FROM candidates WHERE email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR email LIKE '%@seed.trustume.com')`);
+    await pool.query(`DELETE FROM candidates WHERE email IN ('rahul@gmail.com','priya@gmail.com','arjun@gmail.com','sneha@gmail.com','kiran@gmail.com') OR email LIKE '%@seed.trustume.com'`);
     await pool.query(`DELETE FROM job_roles WHERE role_title IN (
       'Frontend Developer','Backend Engineer','Full Stack Developer','Data Analyst','DevOps Engineer')`);
     await pool.query(`DELETE FROM recruiters WHERE email IN (
-      'sarah@trustume.com','michael@trustume.com','ceo@trustume.com')`);
+      'sarah@trustume.com','michael@trustume.com','ceo@trustume.com',
+      'sarah@gmail.com','michael@gmail.com','ceo@gmail.com')`);
     L('Old seed data cleared');
 
     // ── Field definitions ────────────────────────────────────────────────────
@@ -82,15 +147,15 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     L('Inserting recruiters...');
     const r1 = await pool.query(
       `INSERT INTO recruiters (full_name, email, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING recruiter_id`,
-      ['Sarah Johnson', 'sarah@trustume.com', recruiterHash, 'recruiter']
+      ['Sarah Johnson', 'sarah@gmail.com', recruiterHash, 'recruiter']
     );
     const r2 = await pool.query(
       `INSERT INTO recruiters (full_name, email, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING recruiter_id`,
-      ['Michael Chen', 'michael@trustume.com', recruiterHash, 'recruiter']
+      ['Michael Chen', 'michael@gmail.com', recruiterHash, 'recruiter']
     );
     await pool.query(
       `INSERT INTO recruiters (full_name, email, password_hash, role) VALUES ($1,$2,$3,$4)`,
-      ['Priya Kapoor', 'ceo@trustume.com', ceoHash, 'ceo']
+      ['Priya Kapoor', 'ceo@gmail.com', ceoHash, 'ceo']
     );
     const sarahId   = r1.rows[0].recruiter_id;
     const michaelId = r2.rows[0].recruiter_id;
@@ -99,11 +164,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // ── Candidates ───────────────────────────────────────────────────────────
     L('Inserting candidates...');
     const candidateData = [
-      ['Rahul Kumar',  'rahul@seed.trustume.com',  '+91-9876543210', 'Hyderabad', 'https://linkedin.com/in/rahulkumar'],
-      ['Priya Sharma', 'priya@seed.trustume.com',  '+91-9876543211', 'Bangalore', 'https://linkedin.com/in/priyasharma'],
-      ['Arjun Rao',    'arjun@seed.trustume.com',  '+91-9876543212', 'Chennai',   'https://linkedin.com/in/arjunrao'],
-      ['Sneha Patel',  'sneha@seed.trustume.com',  '+91-9876543213', 'Pune',      'https://linkedin.com/in/snehapatel'],
-      ['Kiran Mehta',  'kiran@seed.trustume.com',  '+91-9876543214', 'Delhi',     'https://linkedin.com/in/kiranmehta'],
+      ['Rahul Kumar',  'rahul@gmail.com',  '+91-9876543210', 'Hyderabad', 'https://linkedin.com/in/rahulkumar'],
+      ['Priya Sharma', 'priya@gmail.com',  '+91-9876543211', 'Bangalore', 'https://linkedin.com/in/priyasharma'],
+      ['Arjun Rao',    'arjun@gmail.com',  '+91-9876543212', 'Chennai',   'https://linkedin.com/in/arjunrao'],
+      ['Sneha Patel',  'sneha@gmail.com',  '+91-9876543213', 'Pune',      'https://linkedin.com/in/snehapatel'],
+      ['Kiran Mehta',  'kiran@gmail.com',  '+91-9876543214', 'Delhi',     'https://linkedin.com/in/kiranmehta'],
     ];
     const cids: string[] = [];
     for (const [name, email, phone, loc, li] of candidateData) {
@@ -203,28 +268,28 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     type MsgSet = { tid: string; msgs: { dir: string; stype: string; rid: string | null; email: string; body: string; at: Date }[] };
     const msgSets: MsgSet[] = [
       { tid: tRahul, msgs: [
-        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@trustume.com',          body:'Hi Rahul,\n\nWe have an exciting Frontend Developer opportunity. Your profile looks like a great fit. Would you be interested?\n\nBest,\nSarah Johnson',                                                                           at:dAgo(5) },
-        { dir:'inbound',  stype:'candidate', rid:null,       email:'rahul@seed.trustume.com',     body:'Hi Sarah,\n\nThank you for reaching out. I am very interested! My current notice period is 60 days. Could you share more about the tech stack?\n\nBest,\nRahul Kumar',                                                             at:dAgo(4) },
-        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@trustume.com',          body:'Hi Rahul,\n\nThe 60-day notice period works well. We use React, TypeScript, and Node.js. Can we schedule an introductory call this week?\n\nBest,\nSarah Johnson',                                                                   at:dAgo(3) },
+        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@gmail.com', body:'Hi Rahul,\n\nWe have an exciting Frontend Developer opportunity. Your profile looks like a great fit. Would you be interested?\n\nBest,\nSarah Johnson', at:dAgo(5) },
+        { dir:'inbound',  stype:'candidate', rid:null,       email:'rahul@gmail.com', body:'Hi Sarah,\n\nThank you for reaching out. I am very interested! My current notice period is 60 days. Could you share more about the tech stack?\n\nBest,\nRahul Kumar', at:dAgo(4) },
+        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@gmail.com', body:'Hi Rahul,\n\nThe 60-day notice period works well. We use React, TypeScript, and Node.js. Can we schedule an introductory call this week?\n\nBest,\nSarah Johnson', at:dAgo(3) },
       ]},
       { tid: tPriya, msgs: [
-        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@trustume.com',          body:'Hi Priya,\n\nWe have a Backend Engineer opportunity and your profile looks impressive. Are you open to exploring this role?\n\nBest,\nSarah Johnson',                                                                               at:dAgo(4) },
-        { dir:'inbound',  stype:'candidate', rid:null,       email:'priya@seed.trustume.com',    body:'Hi Sarah,\n\nYes, very interested! I am available immediately. I have strong Node.js and PostgreSQL experience. When can we schedule an interview?\n\nBest,\nPriya Sharma',                                                           at:dAgo(3) },
-        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@trustume.com',          body:'Hi Priya,\n\nWonderful! Could you confirm your availability for Monday or Tuesday 10am-4pm IST for a technical interview?\n\nBest,\nSarah Johnson',                                                                                   at:dAgo(2) },
+        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@gmail.com', body:'Hi Priya,\n\nWe have a Backend Engineer opportunity and your profile looks impressive. Are you open to exploring this role?\n\nBest,\nSarah Johnson', at:dAgo(4) },
+        { dir:'inbound',  stype:'candidate', rid:null,       email:'priya@gmail.com', body:'Hi Sarah,\n\nYes, very interested! I am available immediately. I have strong Node.js and PostgreSQL experience. When can we schedule an interview?\n\nBest,\nPriya Sharma', at:dAgo(3) },
+        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@gmail.com', body:'Hi Priya,\n\nWonderful! Could you confirm your availability for Monday or Tuesday 10am-4pm IST for a technical interview?\n\nBest,\nSarah Johnson', at:dAgo(2) },
       ]},
       { tid: tArjun, msgs: [
-        { dir:'outbound', stype:'recruiter', rid:michaelId, email:'michael@trustume.com',        body:'Hi Arjun,\n\nWe have a Full Stack Developer role that might be a great match. Would you like to know more?\n\nBest,\nMichael Chen',                                                                                                   at:dAgo(6) },
-        { dir:'inbound',  stype:'candidate', rid:null,       email:'arjun@seed.trustume.com',    body:'Hi Michael,\n\nThank you for reaching out. I have already accepted an offer elsewhere. I appreciate your consideration.\n\nBest,\nArjun Rao',                                                                                         at:dAgo(5) },
-        { dir:'outbound', stype:'recruiter', rid:michaelId, email:'michael@trustume.com',        body:'Hi Arjun,\n\nCongratulations on your new opportunity! Please feel free to reach out in the future. All the best!\n\nBest,\nMichael Chen',                                                                                             at:dAgo(4) },
+        { dir:'outbound', stype:'recruiter', rid:michaelId, email:'michael@gmail.com', body:'Hi Arjun,\n\nWe have a Full Stack Developer role that might be a great match. Would you like to know more?\n\nBest,\nMichael Chen', at:dAgo(6) },
+        { dir:'inbound',  stype:'candidate', rid:null,       email:'arjun@gmail.com', body:'Hi Michael,\n\nThank you for reaching out. I have already accepted an offer elsewhere. I appreciate your consideration.\n\nBest,\nArjun Rao', at:dAgo(5) },
+        { dir:'outbound', stype:'recruiter', rid:michaelId, email:'michael@gmail.com', body:'Hi Arjun,\n\nCongratulations on your new opportunity! Please feel free to reach out in the future. All the best!\n\nBest,\nMichael Chen', at:dAgo(4) },
       ]},
       { tid: tSneha, msgs: [
-        { dir:'outbound', stype:'recruiter', rid:michaelId, email:'michael@trustume.com',        body:'Hi Sneha,\n\nWe are hiring a Data Analyst and your profile stands out. We work with SQL, Python, and BI tools. Are you open to a conversation?\n\nBest,\nMichael Chen',                                                               at:dAgo(2) },
-        { dir:'inbound',  stype:'candidate', rid:null,       email:'sneha@seed.trustume.com',    body:'Hi Michael,\n\nI am interested! Could you please share the salary range for this role? I want to make sure the compensation aligns with my expectations.\n\nBest,\nSneha Patel',                                                       at:dAgo(1) },
+        { dir:'outbound', stype:'recruiter', rid:michaelId, email:'michael@gmail.com', body:'Hi Sneha,\n\nWe are hiring a Data Analyst and your profile stands out. We work with SQL, Python, and BI tools. Are you open to a conversation?\n\nBest,\nMichael Chen', at:dAgo(2) },
+        { dir:'inbound',  stype:'candidate', rid:null,       email:'sneha@gmail.com', body:'Hi Michael,\n\nI am interested! Could you please share the salary range for this role? I want to make sure the compensation aligns with my expectations.\n\nBest,\nSneha Patel', at:dAgo(1) },
       ]},
       { tid: tKiran, msgs: [
-        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@trustume.com',          body:'Hi Kiran,\n\nWe have a DevOps Engineer opening that aligns with your infrastructure background. Are you exploring new opportunities?\n\nBest,\nSarah Johnson',                                                                         at:dAgo(3) },
-        { dir:'inbound',  stype:'candidate', rid:null,       email:'kiran@seed.trustume.com',    body:'Hi Sarah,\n\nI am interested! I am serving a 30-day notice period. I work with Docker, Kubernetes, and AWS. Could we schedule a discussion?\n\nBest,\nKiran Mehta',                                                                   at:dAgo(2) },
-        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@trustume.com',          body:'Hi Kiran,\n\nA 30-day notice period works perfectly for our timeline. I will get back to you shortly with interview details.\n\nBest,\nSarah Johnson',                                                                                   at:dAgo(1) },
+        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@gmail.com', body:'Hi Kiran,\n\nWe have a DevOps Engineer opening that aligns with your infrastructure background. Are you exploring new opportunities?\n\nBest,\nSarah Johnson', at:dAgo(3) },
+        { dir:'inbound',  stype:'candidate', rid:null,       email:'kiran@gmail.com', body:'Hi Sarah,\n\nI am interested! I am serving a 30-day notice period. I work with Docker, Kubernetes, and AWS. Could we schedule a discussion?\n\nBest,\nKiran Mehta', at:dAgo(2) },
+        { dir:'outbound', stype:'recruiter', rid:sarahId,   email:'sarah@gmail.com', body:'Hi Kiran,\n\nA 30-day notice period works perfectly for our timeline. I will get back to you shortly with interview details.\n\nBest,\nSarah Johnson', at:dAgo(1) },
       ]},
     ];
 
@@ -306,16 +371,16 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       log,
       credentials: {
         recruiters: [
-          { email: 'sarah@trustume.com',   password: 'Recruiter@123', role: 'recruiter' },
-          { email: 'michael@trustume.com', password: 'Recruiter@123', role: 'recruiter' },
-          { email: 'ceo@trustume.com',     password: 'CEO@123456',    role: 'ceo' },
+          { email: 'sarah@gmail.com',   password: 'Recruiter@123', role: 'recruiter' },
+          { email: 'michael@gmail.com', password: 'Recruiter@123', role: 'recruiter' },
+          { email: 'ceo@gmail.com',     password: 'CEO@123456',    role: 'ceo' },
         ],
         freshers: [
-          { email: 'rahul@seed.trustume.com', password: 'Fresher@123' },
-          { email: 'priya@seed.trustume.com', password: 'Fresher@123' },
-          { email: 'arjun@seed.trustume.com', password: 'Fresher@123' },
-          { email: 'sneha@seed.trustume.com', password: 'Fresher@123' },
-          { email: 'kiran@seed.trustume.com', password: 'Fresher@123' },
+          { email: 'rahul@gmail.com', password: 'Fresher@123' },
+          { email: 'priya@gmail.com', password: 'Fresher@123' },
+          { email: 'arjun@gmail.com', password: 'Fresher@123' },
+          { email: 'sneha@gmail.com', password: 'Fresher@123' },
+          { email: 'kiran@gmail.com', password: 'Fresher@123' },
         ],
       },
     });

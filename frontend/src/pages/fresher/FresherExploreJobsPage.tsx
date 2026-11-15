@@ -37,6 +37,14 @@ export default function FresherExploreJobsPage() {
     queryFn: () => fresherApi.getJobs().then(r => r.data.jobs as Job[]),
   });
 
+  // Fetch already-applied job IDs on mount so the button shows "Applied" immediately
+  const { data: appliedData } = useQuery({
+    queryKey: ['fresher-applied-jobs'],
+    queryFn: () => fresherApi.getAppliedJobs().then(r => (r.data.appliedJobIds || []) as string[]),
+  });
+
+  const isApplied = (jobId: string) => appliedIds.has(jobId) || (appliedData?.includes(jobId) ?? false);
+
   const jobs = data || [];
 
   const filtered = jobs.filter(j => {
@@ -48,8 +56,6 @@ export default function FresherExploreJobsPage() {
       (j.employment_type || '').toLowerCase().includes(q)
     );
   });
-
-  const isApplied = (jobId: string) => appliedIds.has(jobId);
 
   if (isLoading) {
     return (
@@ -282,6 +288,7 @@ export default function FresherExploreJobsPage() {
             setApplyingJob(null);
             setSelectedJob(null);
             qc.invalidateQueries({ queryKey: ['fresher-applications'] });
+            qc.invalidateQueries({ queryKey: ['fresher-applied-jobs'] });
           }}
         />
       )}

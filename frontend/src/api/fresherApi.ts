@@ -9,6 +9,9 @@ export const fresherApi = {
   login:       (email: string, password: string) =>
     axios.post(`${BASE}/fresher/login`, { email, password }),
 
+  register:    (data: { full_name: string; email: string; password: string; phone?: string; location?: string }) =>
+    axios.post(`${BASE}/fresher/register`, data),
+
   // Profile management
   getProfile: () => axios.get(`${BASE}/profile/candidate`, { headers: h() }),
   updateProfile: (data: object) => axios.put(`${BASE}/profile/candidate`, data, { headers: h() }),
@@ -31,6 +34,9 @@ export const fresherApi = {
   // ── Explore Jobs ────────────────────────────────────────────────────────
   getJobs:     () =>
     axios.get(`${BASE}/fresher/jobs`, { headers: h() }),
+
+  getAppliedJobs: () =>
+    axios.get(`${BASE}/fresher/applied-jobs`, { headers: h() }),
 
   getJobDetail: (jobId: string) =>
     axios.get(`${BASE}/fresher/jobs/${jobId}`, { headers: h() }),

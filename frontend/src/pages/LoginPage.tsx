@@ -71,7 +71,7 @@ export default function LoginPage() {
             )}
             <div>
               <label className="label">Email</label>
-              <input className="input" type="email" placeholder="jane@company.com" required
+              <input className="input" type="email" placeholder="jane@gmail.com" required
                 value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
             <div>
@@ -101,9 +101,9 @@ export default function LoginPage() {
           {/* Demo credentials */}
           <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '0.75rem', border: '1px solid #bbf7d0' }}>
             <p style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a', marginBottom: '0.3rem' }}>🧪 Demo Recruiter / CEO Credentials</p>
-            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>sarah@trustume.com / Recruiter@123</p>
-            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>michael@trustume.com / Recruiter@123</p>
-            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>ceo@trustume.com / CEO@123456</p>
+            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>sarah@gmail.com / Recruiter@123</p>
+            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>michael@gmail.com / Recruiter@123</p>
+            <p style={{ fontSize: '0.7rem', color: '#15803d', fontFamily: 'monospace' }}>ceo@gmail.com / CEO@123456</p>
           </div>
         </div>
       </div>

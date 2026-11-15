@@ -301,7 +301,8 @@ export default function ApplicantsPage() {
                 <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">🔒 Recruiter Notes (Private)</h3>
                 <button onClick={() => { setNotes(detail.recruiter_notes || ''); setEditingNotes(true); }} className="text-xs text-indigo-600 hover:underline">Edit</button>
               </div>
-              {editingNotes ? (\n                <div>
+              {editingNotes ? (
+                <div>
                   <textarea className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-300" rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add private notes about this candidate..." />
                   <div className="flex gap-2 mt-2">
                     <button onClick={() => updateStatus.mutate({ id: selectedId, recruiter_notes: notes })} className="text-sm bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg font-medium">Save Notes</button>

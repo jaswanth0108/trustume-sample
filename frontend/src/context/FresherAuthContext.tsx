@@ -17,6 +17,7 @@ interface FresherAuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (data: { full_name: string; email: string; password: string; phone?: string; location?: string }) => Promise<void>;
   logout: () => void;
 }
 
@@ -49,6 +50,14 @@ export function FresherAuthProvider({ children }: { children: ReactNode }) {
     setCandidate(c);
   };
 
+  const register = async (data: { full_name: string; email: string; password: string; phone?: string; location?: string }) => {
+    const res = await axios.post(`${BASE}/fresher/register`, data);
+    const { candidate: c, token: t } = res.data;
+    localStorage.setItem(TOKEN_KEY, t);
+    setToken(t);
+    setCandidate(c);
+  };
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
@@ -56,7 +65,7 @@ export function FresherAuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <FresherAuthContext.Provider value={{ candidate, token, isLoading, login, logout }}>
+    <FresherAuthContext.Provider value={{ candidate, token, isLoading, login, register, logout }}>
       {children}
     </FresherAuthContext.Provider>
   );
